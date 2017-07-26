@@ -9,6 +9,15 @@ from collections import namedtuple
 import gensim, logging
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
+def dropcols_coo(M, idx_to_drop):
+    idx_to_drop = np.unique(idx_to_drop)
+    C = M.tocoo()
+    keep = ~np.in1d(C.col, idx_to_drop)
+    C.data, C.row, C.col = C.data[keep], C.row[keep], C.col[keep]
+    C.col -= idx_to_drop.searchsorted(C.col)    # decrement column indices
+    C._shape = (C.shape[0], C.shape[1] - len(idx_to_drop))
+    return C.tocsr()
+
 class DfidfTransformer(TfidfTransformer):
     
     def fit(self, X, y=None):
@@ -26,10 +35,10 @@ class DfidfTransformer(TfidfTransformer):
             # suppressed entirely.
             idf = np.log(1 + 1/df)
             
-            self._df_diag = sp.spdiags(df, diags=0, m=n_features,
+            dfidf = df * idf
+            self._dfidf = dfidf
+            self._dfidf_diag = sp.spdiags(dfidf, diags=0, m=n_features,
                                        n=n_features, format='csr')
-            self._idf_diag = sp.spdiags(idf, diags=0, m=n_features,
-                                        n=n_features, format='csr')
         return self
     
     def transform(self, X, copy=True):
@@ -47,16 +56,19 @@ class DfidfTransformer(TfidfTransformer):
             X.data += 1
 
         if self.use_idf:
-            check_is_fitted(self, '_idf_diag', 'idf vector is not fitted')
-            check_is_fitted(self, '_df_diag', 'idf vector is not fitted')
+            check_is_fitted(self, '_dfidf_diag', 'dfidf vector is not fitted')
 
-            expected_n_features = self._idf_diag.shape[0]
+            expected_n_features = self._dfidf_diag.shape[0]
             if n_features != expected_n_features:
                 raise ValueError("Input has n_features=%d while the model"
                                  " has been trained with n_features=%d" % (
                                      n_features, expected_n_features))
             # *= doesn't work
-            X = X * self._idf_diag * self._df_diag
+            X = X * self._dfidf_diag
+            #_th = 0.8
+            #_idx_to_drop = [i for i, v in enumerate(self._dfidf) if v < _th]
+            #print(_th)
+            #X = dropcols_coo(X, _idx_to_drop)
 
         if self.norm:
             X = normalize(X, norm=self.norm, copy=False)
@@ -138,7 +150,7 @@ class Word2Vec(object):
             vec = np.zeros(self.size)
             for w in c:
                 if w in model:
-                    tmp = model[w] / np.linalg.norm(model[w])
+                    tmp = model[w] #/ np.linalg.norm(model[w])
                     vec += tmp
             self.vecs.append(vec)
     
@@ -146,7 +158,7 @@ class Word2Vec(object):
         vec = np.zeros(self.size)
         for w in post:
             if w in self.model:
-                tmp = self.model[w] / np.linalg.norm(self.model[w])
+                tmp = self.model[w] #/ np.linalg.norm(self.model[w])
                 vec += tmp
         return vec
 

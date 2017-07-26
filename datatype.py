@@ -109,3 +109,5 @@ class TSV(object):
         self.n -= tsv.n
         self.cv = self.sum_v / self.n # !! 论文中是wsum
         # updateFtSet() # sub没办法更新ftset
+        
+        

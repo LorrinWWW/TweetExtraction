@@ -76,7 +76,7 @@ class TSVRS(LRS):
                 best_tvs.append(tvmax)
         return [tv.t.content for tv in best_tvs]
         
-def summaryTSVRank(tsv, limit=5, lbd=0.5, nmax=50):
+def summaryTSVRank(tsv, limit=5, lbd=0.5, nmax=50, threshold=0.1):
     '''
     docs = [
         '第一篇微博',
@@ -85,10 +85,11 @@ def summaryTSVRank(tsv, limit=5, lbd=0.5, nmax=50):
     ]
     '''
     summarizer = TSVRS()
+    summarizer.threshold = threshold
     summary = summarizer(tsv, limit, lbd=lbd, nmax=nmax) #Summarize the document with 5 sentences
     return summary
 
-def summaryLexRank(tsv, limit=5, nmax=50):
+def summaryLexRank(tsv, limit=5, nmax=50, threshold=0.1):
     '''
     docs = [
         '第一篇微博',
@@ -97,6 +98,7 @@ def summaryLexRank(tsv, limit=5, nmax=50):
     ]
     '''
     summarizer = LRS()
+    summarizer.threshold = threshold
     summary = summarizer(tsv, limit) #Summarize the document with 5 sentences
     return summary
 
